@@ -1,0 +1,22 @@
+=====================================================
+TEE Encryption (Android) - Version 1.0.0 Changelog
+=====================================================
+
+--- NEW FEATURES ---
+
+[NEW] SHA-256 Hash Calculator: Tool added to compute the SHA-256 hash of the input (text or file) for integrity verification.
+[NEW] Green Progress Bar (UX): A visual progress overlay is displayed during encryption and decryption to signal that the app is working and not frozen.
+[NEW] Password Generator: Integrated tool to generate complex keys/passwords.
+[NEW] QR Code Export: Encrypted text output can be generated and shared as a QR code image.
+
+--- IMPROVEMENTS & CORE FUNCTIONALITY ---
+
+[IMPROVEMENT] Dark Mode: Full support for Dark Theme with automatic system detection and a manual toggle switch.
+[IMPROVEMENT] Compatibility: 100% compatible with the TEE Encryption PC Tool V3.9.0 (RAM-Mode).
+[FIX] File Extension: Decryption now automatically restores the correct file extension (e.g., .jpg, .pdf) using the TEE-EXT marker.
+[UX] Hash Display: The hash output can now be copied, and the field height is dynamic.
+
+--- KNOWN ISSUES / ROADMAP ---
+
+[TO-DO] Keyfile Support: Loading keyfiles for encryption/decryption is not yet implemented.
+[ISSUE/TO-DO] Share Intent Functionality: The app's visibility and stability in the Android Share Sheet (especially for WhatsApp Audio/PDFs) is inconsistent. This feature is currently **unstable** and needs further optimization to be fully functional.

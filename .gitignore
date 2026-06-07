@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+
+# User config / preferences
+config.json
+
+# EXE (distributed via GitHub Releases)
+*.exe
+
+# Temporary / intermediate icon files
+tee_encrpytion icon.png
+tee_icon_transparent.png
+
+# Old spec file
+TEE_Encryption_V4.2.0.spec
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

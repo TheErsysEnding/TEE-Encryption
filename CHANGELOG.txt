@@ -1,0 +1,274 @@
+===================================================================
+TEE ENCRYPTION TOOL - CHANGELOG / RELEASE NOTES
+===================================================================
+
+
+================================================================================
+                        TEE ENCRYPTION V4.2.1 - CHANGELOG
+================================================================================
+
+DATE: 07 June 2026
+Previous Version: V4.2.0
+
+================================================================================
+                                 BUG FIXES
+================================================================================
+
+[CRITICAL] Keyfile Silent-Fallback Fixed
+--------------------------------------------------------------------------------
+- PROBLEM: If a keyfile was set but the file was missing or unreadable, the tool
+  silently fell back to password-only encryption without any warning.
+  The user could unknowingly encrypt data WITHOUT the keyfile being applied,
+  while still believing it was part of the key.
+
+- SOLUTION:
+  * If a keyfile is configured but cannot be read, the operation is now aborted.
+  * A clear error dialog is shown explaining the issue and how to resolve it.
+
+[FIXED] Window & Taskbar Icon
+--------------------------------------------------------------------------------
+- PROBLEM: The window and taskbar showed Flet's default blue icon instead of
+  the app's golden lock icon.
+- SOLUTION: Icon is now set at runtime via page.window.icon and bundled
+  correctly into the EXE via --add-data.
+
+[FIXED] EXE Startup Crash (libiconv.dll)
+--------------------------------------------------------------------------------
+- PROBLEM: The EXE crashed on startup with a missing libiconv.dll error.
+- SOLUTION: Native DLLs (libiconv.dll, libzbar-64.dll) are now explicitly
+  bundled into the EXE via --add-binary.
+
+================================================================================
+                              NEW FEATURES
+================================================================================
+
+[NEW] Hash Button in Input Area
+--------------------------------------------------------------------------------
+- A second Hash button is now available directly in the input field area.
+- Previously, SHA-256 hashing was only accessible in the output area.
+
+================================================================================
+                              OTHER CHANGES
+================================================================================
+
+- Script renamed to TEE_Encryption_V4.2.1_GUI.py
+- EXE renamed to TEE_Encryption_V4.2.1.exe
+- Window title updated to TEE Encryption V4.2.1
+
+
+================================================================================
+                        TEE ENCRYPTION V4.2.0 - CHANGELOG
+================================================================================
+
+DATE: 07 January 2026
+Previous Version: V4.0.0
+
+================================================================================
+                                 BUG FIXES
+================================================================================
+
+[CRITICAL] Language Switching Fixed
+--------------------------------------------------------------------------------
+- PROBLEM: Language dropdown was completely non-functional. Selecting a 
+  different language would show the new value in the dropdown, but all UI 
+  elements (buttons, labels, hints, error messages) remained in the old language.
+  
+- ROOT CAUSE: Python closure issue - the lang_code variable was captured by 
+  value at definition time, not by reference. The get_lang() function always 
+  returned the initial language dictionary.
+  
+- SOLUTION: 
+  * Replaced all state variables with a centralized state dictionary
+  * Replaced broken Dropdown with PopupMenuButton (more reliable event handling)
+  * Language now changes instantly in real-time without restart
+
+[FIXED] State Management Overhaul
+--------------------------------------------------------------------------------
+- Converted all nonlocal variables to a centralized state dictionary
+- Affected variables: lang_code, is_dark, is_pinned, keyfile_path, 
+  selected_file, show_confirm_field, passwords_visible, opacity_val
+- This ensures all closures see the current state values
+
+[FIXED] UI Rebuild Preserves User Input
+--------------------------------------------------------------------------------
+- When changing language or theme, all user input is now preserved:
+  * Input text
+  * Output text  
+  * Password fields
+  * Iterations value
+  * Selected file
+  * Hash display state
+
+================================================================================
+                              NEW FEATURES
+================================================================================
+
+[NEW] Extended Language Support (5 New Languages)
+--------------------------------------------------------------------------------
+Added complete translations for:
+
+  | Code | Language   | Native Name |
+  |------|------------|-------------|
+  | tr   | Turkish    | Türkçe      |
+  | ru   | Russian    | Русский     |
+  | ar   | Arabic     | العربية     |
+  | ja   | Japanese   | 日本語      |
+  | zh   | Chinese    | 中文        |
+
+Total supported languages: 9 (was 4)
+- English, Deutsch, Español, Français (existing)
+- Türkçe, Русский, العربية, 日本語, 中文 (new)
+
+All translations include:
+- UI labels and buttons
+- Error messages and dialogs
+- Password generator dialog
+- Success/failure notifications
+- Tooltips and hints
+
+[NEW] Improved Language Selector UI
+--------------------------------------------------------------------------------
+- Replaced Dropdown with PopupMenuButton
+- Shows current language as 2-letter code (EN, DE, ES, FR, TR, RU, AR, JA, ZH)
+- Dropdown arrow indicator
+- Clean bordered design that matches the app theme
+- Reliable click handling (fixes Flet Dropdown event issues)
+
+Thank you for using TEE_Encryption!
+GitHub: @TheErsysEnding
+Links: linktr.ee/theersysending
+
+================================================================================
+
+
+DATE: 27 December 2025
+
+-------------------------------------------------------------------
+GUI VERSION: 4.0.0 (Android APK Compatible)
+-------------------------------------------------------------------
+* New GUI & New loading screen
+* Added save QR Code button
+* Added Import QR Code button
+
+note: i have to add the other languages. For now ist just support english language.
+
+
+DATE: 24 December 2025
+
+-------------------------------------------------------------------
+GUI VERSION: 3.9.0 (Android APK Compatible)
+-------------------------------------------------------------------
+
+### 🎨 GUI & Design
+* Adjusted the GUI color scheme to be more vibrant and consistent with the Android version.
+* Added Progress bar for hash calculation and file de & encryption.
+
+### 📱 Compatibility
+* Achieved full compatibility with the Android APK version (cross-platform parity).
+
+### 🛠 Fixes & Improvements
+* Fixed encryption/decryption logic to ensure easier and more reliable restoration of original files (improved handling of file extensions).
+* Fixed missing multi-language support (restored full support for all 8 languages).
+* Fixed an error message that appeared when decrypting large files. (Decryption was successful, but an error popped up)
+
+DATE: 13 december 2025
+STATUS: CRITICAL FIX / STABLE RELEASE
+
+-------------------------------------------------------------------
+GUI VERSION: 3.7.3 (Important fix)
+-------------------------------------------------------------------
+
+[NEW & ADDED]
++ Smart Extension Embedding (RAM Mode):
+  For files < 100 MB, the original file extension (e.g., .jpg, .docx)
+  is now securely embedded within the encrypted file header.
++ Smart Extension Embedding (Stream Mode):
+  For huge files (> 100 MB), the file extension is now embedded at the 
+  very beginning of the data stream.
++ Internal Marker (TEE-EXT):
+  Introduced an invisible byte signature/marker to reliably detect 
+  if a file contains embedded metadata/extensions.
++ Keyfile / 2FA Support:
+  (From v3.7 base) Added support for optional keyfiles to increase security.
+
+[FIXED / CORRECTED]
+* CRITICAL FIX: Small file corruption resolved.
+  Previously, small files were incorrectly treated as streams, causing the 
+  header not to be stripped upon decryption. The logic now enforces 
+  memory mode for these files.
+* FIX: File extension restoration.
+  Decryption now automatically names the output file correctly 
+  (e.g., "decrypted_123456.png" instead of just "decrypted_123456").
+* FIX: Streaming logic for large files overhauled.
+  The tool now intelligently detects the extension within the first chunk 
+  of the stream.
+
+[COMPATIBILITY]
+* Legacy Support:
+  Files created with older versions (e.g., v3.4, without markers) are 
+  still decrypted correctly (as raw files without auto-extension), 
+  ensuring no data is cut off or corrupted.
+
+-------------------------------------------------------------------
+CLI VERSION: 2.8 (Synced with GUI)
+-------------------------------------------------------------------
+
+[NEW & ADDED]
++ GUI Parity:
+  Cryptographic logic is now 100% synchronized with GUI v3.7.3.
++ Smart Extension Support:
+  The CLI now also supports embedding and automatically restoring 
+  file extensions (.bin -> .jpg, etc.).
+
+[CHANGED / ADJUSTED]
+* Naming Convention (Encrypt):
+  Default output name matched to GUI: "encrypted_{TIMESTAMP}.bin".
+* Naming Convention (Decrypt):
+  Default output name matched to GUI: "decrypted_{TIMESTAMP}".
+  The tool automatically appends the detected extension (e.g., .txt) 
+  to this name.
+
+[FIXED]
+* Streaming Threshold Fix:
+  Streaming threshold raised to 100 MB (synced with GUI) to prevent 
+  performance issues and ensure correct header handling for medium-sized files.
+
+
+
+
+
+
+
+
+==================================================
+
+[GUI VERSION V2.6.2- Graphical Interface] 11 december 2025
+
+- exe launcher saves dark/light mode & languages.
+- renamed export txt to save as .txt 
+
+
+
+
+VERSION 2.6 CLI 
+--------------------------------------------------
+
+[CLI VERSION - Command Line]
+1. Mandatory Password Confirmation (Encryption)
+   - When encrypting a file or text, re-typing the password is now required to prevent typos.
+   - When using the Password Generator ('g'), you must explicitly confirm to use the generated password.
+
+2. Decryption Logic Fix
+   - Removed the password generator option ('g') during decryption to avoid confusion.
+
+3. File Extension Update
+   - Now uses .bin extension by default for compatibility with external Apps.
+   - Automatically detects .bin extension when decrypting to restore original filenames.
+
+
+[GUI VERSION V2.6.1- Graphical Interface]
+1. Optional Password Confirmation
+   - Password confirmation is optional/flexible (unlike the CLI version), allowing for faster usage with the "Show Password" toggle.
+
+2. File Extension Update
+   - Synced with CLI to use .bin extension by default.
