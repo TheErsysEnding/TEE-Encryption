@@ -26,10 +26,38 @@ Available for **Windows** (EXE), **Android** (APK) — and **macOS coming soon**
 | Platform | Link |
 |----------|------|
 | **Windows** | [Latest Release](../../releases) — just double-click, no install needed |
+| **Linux** | See below — one script installs everything automatically |
 | **Android** | [Google Play Store](https://play.google.com/store/apps/details?id=com.tee.encryption&utm_source=emea_Med) |
 | **macOS** | Coming soon |
 
-> **Cross-save compatible** — files encrypted on Windows can be decrypted on Android and vice versa. Same password, same keyfile, same result. No format differences between platforms.
+> **Cross-save compatible** — files encrypted on Windows can be decrypted on Linux or Android and vice versa. Same password, same keyfile, same result. No format differences between platforms.
+
+---
+
+## Linux — Quick Start
+
+No EXE needed. One script handles everything automatically.
+
+**1. Download** these files into a folder:
+- `TEE_Encryption_V4.2.1_GUI.py`
+- `start_linux.sh`
+
+**2. Make the script executable and run it:**
+```bash
+chmod +x start_linux.sh
+./start_linux.sh
+```
+
+The script will:
+- Check Python 3.10+
+- Ask to install `libzbar0` (system library for QR codes, requires sudo once)
+- Create a local Python environment (`.venv`)
+- Install all Python packages automatically
+- Launch the app
+
+Every subsequent start just runs `./start_linux.sh` — packages are already installed, it starts instantly.
+
+**Tested on:** Ubuntu 22.04+, Debian 12+, Fedora 38+, Arch Linux
 
 ---
 

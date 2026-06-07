@@ -1424,20 +1424,26 @@ def main(page: ft.Page):
     def on_copy(e):
         if txt_output.value:
             try:
-                # Windows clipboard via subprocess
-                import subprocess
-                process = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
-                process.communicate(txt_output.value.encode('utf-8'))
-                show_snackbar(get_lang()["copied"])
+                import sys, subprocess
+                if sys.platform == "win32":
+                    proc = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
+                    proc.communicate(txt_output.value.encode('utf-8'))
+                elif sys.platform == "darwin":
+                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+                    proc.communicate(txt_output.value.encode('utf-8'))
+                else:
+                    # Linux: xclip falls back to flet built-in
+                    try:
+                        proc = subprocess.Popen(
+                            ['xclip', '-selection', 'clipboard'],
+                            stdin=subprocess.PIPE
+                        )
+                        proc.communicate(txt_output.value.encode('utf-8'))
+                    except Exception:
+                        page.set_clipboard(txt_output.value)
             except Exception:
-                # Fallback: Try pyperclip
-                try:
-                    import pyperclip
-                    pyperclip.copy(txt_output.value)
-                    show_snackbar(get_lang()["copied"])
-                except ImportError:
-                    page.set_clipboard(txt_output.value)
-                    show_snackbar(get_lang()["copied"])
+                page.set_clipboard(txt_output.value)
+            show_snackbar(get_lang()["copied"])
     
     def on_swap(e):
         txt_input.value = txt_output.value
@@ -1543,12 +1549,25 @@ def main(page: ft.Page):
         )
         def copy_hash(e):
             try:
-                import subprocess
-                proc = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
-                proc.communicate(hash_hex.encode('utf-8'))
-                show_snackbar(get_lang()["copied"])
+                import sys, subprocess
+                if sys.platform == "win32":
+                    proc = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
+                    proc.communicate(hash_hex.encode('utf-8'))
+                elif sys.platform == "darwin":
+                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+                    proc.communicate(hash_hex.encode('utf-8'))
+                else:
+                    try:
+                        proc = subprocess.Popen(
+                            ['xclip', '-selection', 'clipboard'],
+                            stdin=subprocess.PIPE
+                        )
+                        proc.communicate(hash_hex.encode('utf-8'))
+                    except Exception:
+                        page.set_clipboard(hash_hex)
             except Exception:
-                pass
+                page.set_clipboard(hash_hex)
+            show_snackbar(get_lang()["copied"])
         def close_dlg(e):
             dlg.open = False
             page.update()
