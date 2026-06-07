@@ -38,15 +38,19 @@ Available for **Windows** (EXE), **Android** (APK) — and **macOS coming soon**
 
 No EXE needed. One script handles everything automatically.
 
-**1. Download** these files into a folder:
-- `TEE_Encryption_V4.2.1_GUI.py`
-- `start_linux.sh`
+**1. Download** `TEE_Encryption_V4.2.1_Linux.tar.gz` from the [Releases](../../releases) page and extract it:
+```bash
+tar xzf TEE_Encryption_V4.2.1_Linux.tar.gz
+cd TEE_Encryption_V4.2.1_Linux
+```
 
-**2. Make the script executable and run it:**
+**2. Run the installer/launcher:**
 ```bash
 chmod +x start_linux.sh
 ./start_linux.sh
 ```
+
+> Alternatively, grab `TEE_Encryption_V4.2.1_GUI.py` and `start_linux.sh` directly from the source and run the same command.
 
 The script will:
 - Check Python 3.10+
