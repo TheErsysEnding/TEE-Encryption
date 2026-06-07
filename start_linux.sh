@@ -1,6 +1,7 @@
 #!/bin/bash
 # ==========================================================
 #   TEE Encryption V4.2.1 - Linux Starter & Auto-Installer
+#   Verified on Ubuntu 26.04 LTS (Python 3.14)
 # ==========================================================
 
 GREEN='\033[0;32m'
@@ -55,31 +56,47 @@ if ! python3 -m venv --help &>/dev/null; then
 fi
 
 # ----------------------------------------------------------
-# 3. System-Bibliothek libzbar0 (für QR-Code-Funktion)
+# 3. System-Bibliotheken (GUI + QR-Code)
+#    flet-desktop (Flutter) braucht: libsecret, GTK3, OpenGL/EGL/GLES
+#    QR-Code-Scanner braucht: libzbar0
 # ----------------------------------------------------------
-ZBAR_OK=false
-python3 -c "from pyzbar import pyzbar" 2>/dev/null && ZBAR_OK=true
+NEED_SYSLIBS=false
+# Test ob die GUI-Laufzeit schon einmal lief und Libs vorhanden sind
+python3 -c "from pyzbar import pyzbar" 2>/dev/null || NEED_SYSLIBS=true
+ldconfig -p 2>/dev/null | grep -q "libsecret-1.so.0" || NEED_SYSLIBS=true
+ldconfig -p 2>/dev/null | grep -q "libGLESv2.so.2"   || NEED_SYSLIBS=true
 
-if [ "$ZBAR_OK" = false ]; then
+if [ "$NEED_SYSLIBS" = true ]; then
     echo ""
-    echo -e "${YELLOW}[INFO] Systembibliothek 'libzbar0' wird für QR-Codes benötigt.${NC}"
+    echo -e "${YELLOW}[INFO] Es werden System-Bibliotheken für die grafische"
+    echo -e "       Oberfläche und die QR-Code-Funktion benötigt.${NC}"
     read -r -p "       Jetzt automatisch installieren? [J/n] " REPLY
     REPLY="${REPLY:-J}"
     if [[ "$REPLY" =~ ^[JjYy] ]]; then
         if command -v apt-get &>/dev/null; then
-            sudo apt-get update -qq && sudo apt-get install -y libzbar0
+            sudo apt-get update -qq
+            sudo apt-get install -y \
+                libzbar0 libsecret-1-0 libgtk-3-0 \
+                libgles2 libegl1 libgl1-mesa-dri
         elif command -v dnf &>/dev/null; then
-            sudo dnf install -y zbar
+            sudo dnf install -y \
+                zbar libsecret gtk3 \
+                mesa-libGLES mesa-libEGL mesa-dri-drivers
         elif command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm zbar
+            sudo pacman -S --noconfirm zbar libsecret gtk3 mesa
         elif command -v zypper &>/dev/null; then
-            sudo zypper install -y zbar
+            sudo zypper install -y \
+                zbar libsecret-1-0 gtk3 \
+                Mesa-libGLESv2-2 Mesa-libEGL1 Mesa-dri
         else
             echo -e "${YELLOW}[WARNUNG] Paketmanager nicht erkannt.${NC}"
-            echo "Installiere manuell: libzbar0 (oder zbar)"
+            echo "Bitte manuell installieren: zbar, libsecret, gtk3,"
+            echo "GLES/EGL und Mesa-Treiber."
         fi
+        echo -e "${GREEN}[OK] System-Bibliotheken installiert.${NC}"
     else
-        echo -e "${YELLOW}[WARNUNG] QR-Code-Funktion wird ohne libzbar0 nicht funktionieren.${NC}"
+        echo -e "${YELLOW}[WARNUNG] Ohne diese Bibliotheken startet die GUI"
+        echo -e "          oder die QR-Funktion evtl. nicht.${NC}"
     fi
 fi
 
@@ -99,15 +116,19 @@ source .venv/bin/activate
 # 5. Python-Pakete installieren (nur wenn nötig)
 # ----------------------------------------------------------
 NEED_INSTALL=false
-python3 -c "import flet" 2>/dev/null       || NEED_INSTALL=true
-python3 -c "import cryptography" 2>/dev/null || NEED_INSTALL=true
+python3 -c "import flet"          2>/dev/null || NEED_INSTALL=true
+python3 -c "import flet_desktop"  2>/dev/null || NEED_INSTALL=true
+python3 -c "import cryptography"  2>/dev/null || NEED_INSTALL=true
+python3 -c "import qrcode"        2>/dev/null || NEED_INSTALL=true
+python3 -c "import pyzbar"        2>/dev/null || NEED_INSTALL=true
+python3 -c "import PIL"           2>/dev/null || NEED_INSTALL=true
 
 if [ "$NEED_INSTALL" = true ]; then
     echo ""
-    echo -e "${CYAN}[SETUP] Installiere Pakete (dauert ~1-2 Minuten beim ersten Start)...${NC}"
+    echo -e "${CYAN}[SETUP] Installiere Python-Pakete (dauert ~1-3 Minuten beim ersten Start)...${NC}"
     echo ""
     pip install --upgrade pip --quiet
-    pip install flet==0.85.2 flet-desktop==0.85.2 cryptography pyzbar pillow
+    pip install flet==0.85.2 flet-desktop==0.85.2 cryptography qrcode pyzbar pillow
     echo ""
     echo -e "${GREEN}[OK] Alle Pakete installiert.${NC}"
 else

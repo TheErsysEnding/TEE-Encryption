@@ -47,6 +47,19 @@ Previous Version: V4.2.0
 - A second Hash button is now available directly in the input field area.
 - Previously, SHA-256 hashing was only accessible in the output area.
 
+[NEW] Linux Support + Auto-Installer
+--------------------------------------------------------------------------------
+- Added start_linux.sh: a one-command setup that checks Python, installs all
+  required system libraries (libzbar0, libsecret, gtk3, OpenGL/EGL/GLES) and
+  Python packages into a local environment, then launches the app.
+- Verified end-to-end on Ubuntu 26.04 LTS (Python 3.14): install, GUI launch,
+  and cross-save (a file encrypted on Windows decrypts correctly on Linux).
+
+[FIXED] Cross-Platform Clipboard
+--------------------------------------------------------------------------------
+- Copy buttons used a Windows-only command (clip). Now platform-aware:
+  Windows (clip), macOS (pbcopy), Linux (xclip with a built-in fallback).
+
 ================================================================================
                               OTHER CHANGES
 ================================================================================

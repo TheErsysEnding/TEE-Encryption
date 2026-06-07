@@ -50,14 +50,17 @@ chmod +x start_linux.sh
 
 The script will:
 - Check Python 3.10+
-- Ask to install `libzbar0` (system library for QR codes, requires sudo once)
+- Ask to install the required system libraries (one `sudo` prompt):
+  `libzbar0` (QR codes) plus `libsecret`, `gtk3`, and the OpenGL/EGL/GLES
+  libraries that the GUI needs
 - Create a local Python environment (`.venv`)
 - Install all Python packages automatically
 - Launch the app
 
 Every subsequent start just runs `./start_linux.sh` — packages are already installed, it starts instantly.
 
-**Tested on:** Ubuntu 22.04+, Debian 12+, Fedora 38+, Arch Linux
+**Verified on:** Ubuntu 26.04 LTS with Python 3.14 (full end-to-end: install → encrypt/decrypt → GUI launch).
+Package names are also handled for Debian, Fedora, Arch and openSUSE.
 
 ---
 
@@ -66,7 +69,7 @@ Every subsequent start just runs `./start_linux.sh` — packages are already ins
 **Requirements:**
 ```
 Python 3.10+
-pip install flet==0.85.2 flet-desktop==0.85.2 cryptography pyzbar pillow
+pip install flet==0.85.2 flet-desktop==0.85.2 cryptography qrcode pyzbar pillow
 ```
 
 **Copy native DLLs** (required for QR reading):
