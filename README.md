@@ -111,6 +111,14 @@ Fresh salt and IV are generated for every encryption operation — no nonce reus
 
 ---
 
+## Licence
+
+TEE Encryption is MIT-licensed — see [`LICENSE`](LICENSE).
+
+Two LGPL-licensed libraries ship with the Windows build (`libzbar-64.dll` and `libiconv.dll`, both
+taken unmodified from `pyzbar`). Their licence text, copyright holders and sources are documented in
+[`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md), along with everything else this project builds on.
+
 ## Credits
 
 Made by **TheErsysEnding**
