@@ -149,8 +149,9 @@ What it does:
 
 **Automatic builds:** the GitHub Actions workflow [`build-macos.yml`](.github/workflows/build-macos.yml) builds the
 DMG and PKG on a real Mac for every change, installs both, launches the app (natively and as Intel build under
-Rosetta 2) and checks that it runs as a normal app with its Dock icon. The installers are attached to each run;
-pushing a tag such as `v4.2.1` attaches them to the GitHub release.
+Rosetta 2) and checks that it runs as a normal app with its Dock icon. The installers are attached to each run,
+and pull requests refresh an unpublished draft release *"macOS test build"* (only visible to people with write
+access — publish it with one click). Pushing a tag such as `v4.2.1` attaches them to the GitHub release.
 
 ---
 

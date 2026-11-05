@@ -313,7 +313,6 @@ mkdir -p "$DMG_STAGE/.background"
 ditto "$APP" "$DMG_STAGE/$APP_NAME.app"
 ln -s /Applications "$DMG_STAGE/Applications"
 cp "$ASSETS/dmg_background.tiff" "$DMG_STAGE/.background/background.tiff"
-cp "$ASSETS/TEE_Encryption.icns" "$DMG_STAGE/.VolumeIcon.icns"
 
 if [ -d "/Volumes/$APP_NAME" ]; then
     warn "Ein Laufwerk '/Volumes/$APP_NAME' ist bereits eingebunden - wird ausgeworfen."
@@ -329,13 +328,17 @@ MOUNT_DIR="$(echo "$ATTACH_OUT" | grep -E '/Volumes/' | sed -E 's|^.*(/Volumes/.
 [ -d "$MOUNT_DIR" ] || fail "DMG konnte nicht eingebunden werden:\n$ATTACH_OUT"
 echo "Eingebunden: $MOUNT_DIR"
 
-# eigenes Laufwerks-Icon aktivieren
+# eigenes Laufwerks-Icon: erst ins eingebundene Image kopieren (hdiutil -srcfolder
+# uebernimmt .VolumeIcon.icns nicht) und dann das "Custom Icon"-Flag setzen
+cp "$ASSETS/TEE_Encryption.icns" "$MOUNT_DIR/.VolumeIcon.icns"
 if command -v SetFile >/dev/null 2>&1; then
+    SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" || true
     SetFile -a C "$MOUNT_DIR" || true
 else
     xattr -wx com.apple.FinderInfo \
         "0000000000000000040000000000000000000000000000000000000000000000" "$MOUNT_DIR" || true
 fi
+[ -f "$MOUNT_DIR/.VolumeIcon.icns" ] || fail "Laufwerks-Icon konnte nicht ins DMG kopiert werden"
 
 if [ "$DMG_LAYOUT" = true ]; then
     LAYOUT_SCRIPT="$BUILD_DIR/dmg-layout.applescript"
