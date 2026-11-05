@@ -80,9 +80,20 @@ Prefer a classic installer? Use `TEE_Encryption_V4.2.1_macOS.pkg` instead — it
 - **macOS 15 Sequoia and newer:** open the app → click **Done** in the warning → open
   **System Settings → Privacy & Security** → scroll down to *"TEE Encryption" was blocked* → **Open Anyway** → confirm.
 - **macOS 14 Sonoma and older:** right-click (Control-click) the app → **Open** → **Open**.
-- Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/TEE Encryption.app"`
+- Or in Terminal — on the **installed app**, not on the DMG:
+  `xattr -dr com.apple.quarantine "/Applications/TEE Encryption.app"`
 
 The `.pkg` installer is allowed the same way. After that the app starts with a normal double-click.
+
+**Install from Terminal** (if Finder or Gatekeeper get in the way):
+```bash
+hdiutil verify ~/Downloads/TEE_Encryption_V4.2.1_macOS.dmg      # must end with "VALID"
+hdiutil attach -nobrowse ~/Downloads/TEE_Encryption_V4.2.1_macOS.dmg
+ditto "/Volumes/TEE Encryption/TEE Encryption.app" "/Applications/TEE Encryption.app"
+hdiutil detach "/Volumes/TEE Encryption"
+xattr -dr com.apple.quarantine "/Applications/TEE Encryption.app"
+open "/Applications/TEE Encryption.app"
+```
 
 While the app runs, the **golden TEE lock** sits in the Dock (named *TEE Encryption*, also in the menu bar and
 in Cmd+Tab). Right-click it → **Options → Keep in Dock** to pin it there permanently.
