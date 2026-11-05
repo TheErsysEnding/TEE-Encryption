@@ -38,6 +38,28 @@ Previous Version: V4.2.0
 - SOLUTION: Native DLLs (libiconv.dll, libzbar-64.dll) are now explicitly
   bundled into the EXE via --add-binary.
 
+[FIXED] Copy on macOS: Special Characters
+--------------------------------------------------------------------------------
+- PROBLEM: Apps started from Finder or the Dock have no UTF-8 locale, so
+  pbcopy turned umlauts, Cyrillic, Arabic, Japanese and Chinese text into
+  garbage when copying the output or a hash.
+- SOLUTION: pbcopy now always runs with a UTF-8 locale.
+
+[FIXED] Clipboard Fallback
+--------------------------------------------------------------------------------
+- PROBLEM: If the system clipboard tool failed (e.g. xclip missing on Linux),
+  the fallback called page.set_clipboard(), which no longer exists since
+  Flet 0.70 - copying silently did nothing.
+- SOLUTION: The fallback now uses Flet's Clipboard service.
+
+[FIXED] QR Import Without ZBar
+--------------------------------------------------------------------------------
+- PROBLEM: Without the native ZBar library the QR import was unavailable,
+  and a ZBar library that could not be loaded (OSError, e.g. wrong
+  architecture) crashed the app on startup.
+- SOLUTION: Load errors are handled. zxing-cpp is used as fallback decoder -
+  it needs no system library. The macOS app uses zxing-cpp.
+
 ================================================================================
                               NEW FEATURES
 ================================================================================
@@ -54,6 +76,19 @@ Previous Version: V4.2.0
   Python packages into a local environment, then launches the app.
 - Verified end-to-end on Ubuntu 26.04 LTS (Python 3.14): install, GUI launch,
   and cross-save (a file encrypted on Windows decrypts correctly on Linux).
+
+[NEW] macOS App + Installer (DMG / PKG)
+--------------------------------------------------------------------------------
+- Native macOS app "TEE Encryption.app": one universal app for Apple Silicon
+  and Intel Macs (macOS 11+), built with `flet build macos` (embedded Python).
+- The golden TEE lock is the app icon in the Dock, Finder, Launchpad and
+  Cmd+Tab; the Dock and the menu bar show the name "TEE Encryption".
+- Installer files: TEE_Encryption_V4.2.1_macOS.dmg (open, drag the app to
+  Applications) and TEE_Encryption_V4.2.1_macOS.pkg (classic installer).
+- One-command build: macos/build_macos.sh. A GitHub Actions workflow builds,
+  installs and launch-tests both installers on a real Mac for every change.
+- Settings are stored in ~/Library/Application Support/TEE Encryption
+  (an existing config.json next to the script is taken over).
 
 [FIXED] Cross-Platform Clipboard
 --------------------------------------------------------------------------------

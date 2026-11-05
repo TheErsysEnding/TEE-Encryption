@@ -56,8 +56,45 @@ transparency; each project's own licence text ships with its package.
 | pyzbar | MIT | https://github.com/NaturalHistoryMuseum/pyzbar |
 | Pillow | MIT-CMU (formerly HPND) | https://github.com/python-pillow/Pillow |
 | PyInstaller | GPL-2.0-or-later **with** a bootloader exception that permits proprietary and MIT-licensed output | https://github.com/pyinstaller/pyinstaller |
+| zxing-cpp (fallback QR reader; used by the macOS app) | Apache-2.0 | https://github.com/zxing-cpp/zxing-cpp |
 
 `cryptography` in turn links **OpenSSL** (Apache-2.0), which its own wheels bundle and document.
+
+---
+
+## Bundled inside the macOS app
+
+`flet build macos` produces a self-contained `TEE Encryption.app`: it embeds the Flutter engine, a CPython
+runtime and the Python packages below. Nothing is modified; each Python package's own licence text ships inside
+the app bundle (in its `*.dist-info` folder), and Flutter collects the licences of the engine and of all Dart
+packages of the Flet client into `NOTICES.Z` inside the app.
+
+| Component | Licence | Project |
+|---|---|---|
+| Flutter engine & framework | BSD-3-Clause | https://github.com/flutter/flutter |
+| Flet (Flutter client + Python package, build template) | Apache-2.0 | https://github.com/flet-dev/flet |
+| serious_python (embedded Python runtime for Flutter) | Apache-2.0 | https://github.com/flet-dev/serious-python |
+| CPython 3.12 | PSF License 2.0 | https://www.python.org/ |
+| zxing-cpp — QR code reading in the macOS app | Apache-2.0 | https://github.com/zxing-cpp/zxing-cpp |
+| cryptography (bundles OpenSSL, Apache-2.0) | Apache-2.0 **or** BSD-3-Clause | https://github.com/pyca/cryptography |
+| cffi / pycparser | MIT-0 / BSD-3-Clause | https://github.com/python-cffi/cffi · https://github.com/eliben/pycparser |
+| Pillow | MIT-CMU | https://github.com/python-pillow/Pillow |
+| qrcode | BSD-3-Clause | https://github.com/lincolnloop/python-qrcode |
+| msgpack | Apache-2.0 | https://github.com/msgpack/msgpack-python |
+| httpx / httpcore | BSD-3-Clause | https://github.com/encode/httpx |
+| h11 / anyio | MIT | https://github.com/python-hyper/h11 · https://github.com/agronholm/anyio |
+| idna | BSD-3-Clause | https://github.com/kjd/idna |
+| certifi (CA certificate bundle) | MPL-2.0 | https://github.com/certifi/python-certifi |
+| oauthlib | BSD-3-Clause | https://github.com/oauthlib/oauthlib |
+| repath / six | MIT | https://github.com/nickcoutsos/python-repath · https://github.com/benjaminp/six |
+
+Pillow's macOS wheels bundle image libraries (libjpeg-turbo, libpng, zlib-ng, libtiff, libwebp, libavif, LCMS2,
+FreeType, HarfBuzz, OpenJPEG, Brotli, liblzma, libxcb/libXau). Their licences are collected in Pillow's licence
+file, which ships inside the app (`pillow-<version>.dist-info/licenses/LICENSE`).
+
+The build uses Flet's official build template with one change, applied by `macos/build_macos.sh`: the app keeps
+its data folder in `~/Library/Application Support` instead of `~/Documents` (so macOS does not ask for access to
+the Documents folder). The ZBar/libiconv DLLs listed above are **not** part of the macOS app.
 
 ---
 

@@ -1,7 +1,7 @@
 # TEE Encryption V4.2.1
 
 A cross-platform AES-256-GCM encryption tool with a modern graphical interface.  
-Available for **Windows** (EXE), **Android** (APK) — and **macOS coming soon**.
+Available for **Windows** (EXE), **macOS** (DMG / PKG installer), **Linux** and **Android** (APK).
 
 ---
 
@@ -28,9 +28,9 @@ Available for **Windows** (EXE), **Android** (APK) — and **macOS coming soon**
 | **Windows** | [Latest Release](../../releases) — just double-click, no install needed |
 | **Linux** | See below — one script installs everything automatically |
 | **Android** | [Google Play Store](https://play.google.com/store/apps/details?id=com.tee.encryption&utm_source=emea_Med) |
-| **macOS** | Coming soon |
+| **macOS** | [Latest Release](../../releases) — `TEE_Encryption_V4.2.1_macOS.dmg` (drag & drop) or `.pkg` (installer). One app for Apple Silicon **and** Intel Macs |
 
-> **Cross-save compatible** — files encrypted on Windows can be decrypted on Linux or Android and vice versa. Same password, same keyfile, same result. No format differences between platforms.
+> **Cross-save compatible** — files encrypted on Windows can be decrypted on macOS, Linux or Android and vice versa. Same password, same keyfile, same result. No format differences between platforms.
 
 ---
 
@@ -68,6 +68,28 @@ Package names are also handled for Debian, Fedora, Arch and openSUSE.
 
 ---
 
+## macOS — Install
+
+**1. Download** `TEE_Encryption_V4.2.1_macOS.dmg` from the [Releases](../../releases) page.
+It is one universal app — it runs natively on Apple Silicon and on Intel Macs (macOS 11 Big Sur or newer).
+
+**2. Install:** open the DMG and drag **TEE Encryption** onto the **Applications** folder.
+Prefer a classic installer? Use `TEE_Encryption_V4.2.1_macOS.pkg` instead — it installs the app into Applications.
+
+**3. First start:** the app is not notarized by Apple (that needs a paid developer account), so macOS asks once:
+- **macOS 15 Sequoia and newer:** open the app → click **Done** in the warning → open
+  **System Settings → Privacy & Security** → scroll down to *"TEE Encryption" was blocked* → **Open Anyway** → confirm.
+- **macOS 14 Sonoma and older:** right-click (Control-click) the app → **Open** → **Open**.
+- Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/TEE Encryption.app"`
+
+The `.pkg` installer is allowed the same way. After that the app starts with a normal double-click.
+
+While the app runs, the **golden TEE lock** sits in the Dock (named *TEE Encryption*, also in the menu bar and
+in Cmd+Tab). Right-click it → **Options → Keep in Dock** to pin it there permanently.
+Settings (language, theme, opacity …) are stored in `~/Library/Application Support/TEE Encryption/`.
+
+---
+
 ## Build it yourself (Windows)
 
 **Requirements:**
@@ -96,6 +118,42 @@ The EXE will be in the `dist\` folder.
 
 ---
 
+## Build it yourself (macOS)
+
+**Requirements:** a Mac with [Xcode](https://apps.apple.com/app/xcode/id497799835) (start it once to accept the
+licence), CocoaPods (`brew install cocoapods`) and Python 3.10+.
+
+**Build command:**
+```bash
+./macos/build_macos.sh
+```
+
+The script sets up everything else by itself — a local Python environment with `flet build` and, on the first
+run, the matching Flutter SDK (about 1.5 GB; the first build takes 10–20 minutes). Result:
+
+| File | What it is |
+|------|------------|
+| `dist/TEE_Encryption_V4.2.1_macOS.dmg` | Disk image — drag the app into Applications |
+| `dist/TEE_Encryption_V4.2.1_macOS.pkg` | Classic installer — installs the app into Applications |
+| `dist/TEE Encryption.app` | The app itself |
+| `dist/SHA256SUMS.txt` | SHA-256 checksums of the installers |
+
+What it does:
+- `flet build macos` turns the app into **one native macOS app with embedded Python** — the Dock therefore shows a
+  single icon: the golden lock, named *TEE Encryption*
+- the app icon, the DMG background and the installer logo are generated from `TEE_encryption_GOLD.png`
+  (`macos/make_assets.py`)
+- `macos/universal_fixup.py` makes every native library universal (Apple Silicon + Intel), re-signs the app and
+  verifies it
+- options: `--clean` (fresh build), `--no-pkg` (DMG only), `--no-dmg-layout` (skip the Finder window design)
+
+**Automatic builds:** the GitHub Actions workflow [`build-macos.yml`](.github/workflows/build-macos.yml) builds the
+DMG and PKG on a real Mac for every change, installs both, launches the app (natively and as Intel build under
+Rosetta 2) and checks that it runs as a normal app with its Dock icon. The installers are attached to each run;
+pushing a tag such as `v4.2.1` attaches them to the GitHub release.
+
+---
+
 ## Encryption Details
 
 | Parameter         | Value                        |
@@ -118,6 +176,8 @@ TEE Encryption is MIT-licensed — see [`LICENSE`](LICENSE).
 Two LGPL-licensed libraries ship with the Windows build (`libzbar-64.dll` and `libiconv.dll`, both
 taken unmodified from `pyzbar`). Their licence text, copyright holders and sources are documented in
 [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md), along with everything else this project builds on.
+The macOS app embeds the Flutter engine, CPython and the Python packages listed there as well
+(QR reading on macOS uses zxing-cpp instead of ZBar).
 
 ## Credits
 
