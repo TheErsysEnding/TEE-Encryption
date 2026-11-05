@@ -39,9 +39,11 @@ build_number = 421
 path = "src"
 module = "main"
 
-[tool.flet.macos]
-# One universal app for Apple Silicon (arm64) and Intel (x86_64) Macs
-target_arch = ["arm64", "x86_64"]
+# One universal app for Apple Silicon (arm64) and Intel (x86_64) Macs: flet installs
+# the packages for BOTH architectures by default. Do not set `target_arch` here -
+# flet 0.85.2 hands a list to serious_python as "--arch arm64 x86_64", of which only
+# the first entry is used (= an arm64-only app). macos/universal_fixup.py verifies
+# that every binary in the finished app contains arm64 and x86_64.
 
 [tool.flet.macos.info]
 LSApplicationCategoryType = "public.app-category.utilities"

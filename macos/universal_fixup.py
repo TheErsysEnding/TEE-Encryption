@@ -218,6 +218,33 @@ def check_dependencies(binaries, app: Path):
     return problems
 
 
+def remove_external_symlinks(app: Path):
+    """
+    Removes symlinks that point OUTSIDE the app bundle. serious_python leaves such a
+    build-time link in site-packages (`.pod` -> its CocoaPods folder). codesign rejects
+    it ("invalid destination for symbolic link in bundle"), and Gatekeeper reports
+    downloaded apps with an invalid seal as "damaged". The app never uses these links.
+    """
+    app_real = app.resolve()
+    removed = []
+    for dirpath, dirnames, filenames in os.walk(app, followlinks=False):
+        for name in dirnames + filenames:
+            p = Path(dirpath) / name
+            if not p.is_symlink():
+                continue
+            target = os.readlink(p)
+            resolved = (Path(target) if os.path.isabs(target) else p.parent / target).resolve()
+            try:
+                resolved.relative_to(app_real)
+                continue  # internal link (e.g. Versions/Current -> A) - keep it
+            except ValueError:
+                pass
+            log(f"  entferne Symlink nach ausserhalb: {p.relative_to(app.parent)} -> {target}")
+            p.unlink()
+            removed.append(p)
+    return removed
+
+
 def is_signed_bundle(bundle: Path) -> bool:
     if any((bundle / p).exists() for p in ("Contents/_CodeSignature", "_CodeSignature")):
         return True
@@ -225,14 +252,17 @@ def is_signed_bundle(bundle: Path) -> bool:
     return any(bundle.glob("Versions/*/_CodeSignature"))
 
 
-def resign(app: Path, changed):
-    if not changed:
+def resign(app: Path, changed, removed=()):
+    """Re-signs changed Mach-O files, then every signed bundle containing a change
+    (innermost first) and finally the app itself - keeping identifier/entitlements."""
+    if not changed and not removed:
         return
-    log(f"Signiere {len(changed)} geaenderte Datei(en) neu (ad-hoc) ...")
+    log(f"Signiere neu (ad-hoc): {len(changed)} geaenderte Binaerdatei(en), "
+        f"{len(removed)} entfernte Symlink(s) ...")
     for f in changed:
         run(["codesign", "--force", "--sign", "-", "--timestamp=none", str(f)])
     bundles = set()
-    for f in changed:
+    for f in list(changed) + list(removed):
         p = f.parent
         while p != app and p != p.parent:
             if p.suffix in BUNDLE_SUFFIXES and is_signed_bundle(p):
@@ -249,7 +279,10 @@ def resign(app: Path, changed):
 def verify_signature(app: Path):
     result = run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(app)], check=False)
     out = ((result.stdout or "") + (result.stderr or "")).strip()
-    return result.returncode == 0, out
+    # keep only the interesting lines (codesign lists every validated framework)
+    lines = [line for line in out.splitlines()
+             if not line.startswith(("--prepared:", "--validated:"))]
+    return result.returncode == 0, "\n".join(lines)
 
 
 def main():
@@ -269,6 +302,8 @@ def main():
 
     ok, out = verify_signature(app)
     log(f"Signatur vor der Bearbeitung: {'OK' if ok else 'FEHLER'}" + ("" if ok else f"\n{out}"))
+
+    removed = [] if args.check_only else remove_external_symlinks(app)
 
     changed, added = [], []
     site_dirs = find_site_packages(app)
@@ -340,8 +375,8 @@ def main():
                 log(f"    {p}")
             raise SystemExit(1)
 
-    if changed and not args.check_only:
-        resign(app, changed)
+    if (changed or removed) and not args.check_only:
+        resign(app, changed, removed)
 
     # final verification over the WHOLE app
     log("Pruefe alle Mach-O-Dateien im App-Bundle ...")
