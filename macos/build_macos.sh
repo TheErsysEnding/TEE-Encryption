@@ -302,6 +302,7 @@ detach_volume() {
         fi
         sleep 2
     done
+    warn "Laufwerk $target ist noch belegt - wird erzwungen ausgeworfen."
     hdiutil detach "$target" -force -quiet 2>/dev/null || true
 }
 
@@ -327,18 +328,6 @@ ATTACH_OUT="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG")"
 MOUNT_DIR="$(echo "$ATTACH_OUT" | grep -E '/Volumes/' | sed -E 's|^.*(/Volumes/.*)$|\1|' | tail -1)"
 [ -d "$MOUNT_DIR" ] || fail "DMG konnte nicht eingebunden werden:\n$ATTACH_OUT"
 echo "Eingebunden: $MOUNT_DIR"
-
-# eigenes Laufwerks-Icon: erst ins eingebundene Image kopieren (hdiutil -srcfolder
-# uebernimmt .VolumeIcon.icns nicht) und dann das "Custom Icon"-Flag setzen
-cp "$ASSETS/TEE_Encryption.icns" "$MOUNT_DIR/.VolumeIcon.icns"
-if command -v SetFile >/dev/null 2>&1; then
-    SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" || true
-    SetFile -a C "$MOUNT_DIR" || true
-else
-    xattr -wx com.apple.FinderInfo \
-        "0000000000000000040000000000000000000000000000000000000000000000" "$MOUNT_DIR" || true
-fi
-[ -f "$MOUNT_DIR/.VolumeIcon.icns" ] || fail "Laufwerks-Icon konnte nicht ins DMG kopiert werden"
 
 if [ "$DMG_LAYOUT" = true ]; then
     LAYOUT_SCRIPT="$BUILD_DIR/dmg-layout.applescript"
@@ -379,13 +368,29 @@ APPLESCRIPT
         else
             warn "Finder hat das Fensterlayout nicht gespeichert - DMG funktioniert trotzdem."
         fi
+        sleep 4   # Finder schreibt noch nach - erst danach weiter am Laufwerk arbeiten
     else
         warn "Finder-Layout nicht moeglich (keine Automations-Erlaubnis?) - DMG funktioniert trotzdem."
     fi
 fi
 
+# eigenes Laufwerks-Icon - erst NACH der Finder-Gestaltung: ins eingebundene Image
+# kopieren (hdiutil -srcfolder uebernimmt .VolumeIcon.icns nicht) und dann das
+# "Custom Icon"-Flag des Laufwerks setzen
+cp "$ASSETS/TEE_Encryption.icns" "$MOUNT_DIR/.VolumeIcon.icns"
+if command -v SetFile >/dev/null 2>&1; then
+    SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" || true
+    SetFile -a C "$MOUNT_DIR" || true
+else
+    xattr -wx com.apple.FinderInfo \
+        "0000000000000000040000000000000000000000000000000000000000000000" "$MOUNT_DIR" || true
+fi
+[ -f "$MOUNT_DIR/.VolumeIcon.icns" ] || fail "Laufwerks-Icon konnte nicht ins DMG kopiert werden"
+
 rm -rf "$MOUNT_DIR/.fseventsd" "$MOUNT_DIR/.Trashes" 2>/dev/null || true
 chmod -Rf go-w "$MOUNT_DIR" 2>/dev/null || true
+echo "Inhalt des DMG-Laufwerks:"
+ls -la "$MOUNT_DIR"
 sync
 detach_volume "$MOUNT_DIR"
 
@@ -393,6 +398,21 @@ rm -f "$DIST_DIR/$DMG_NAME"
 hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DIST_DIR/$DMG_NAME" >/dev/null
 rm -f "$RW_DMG"
 hdiutil verify "$DIST_DIR/$DMG_NAME" >/dev/null 2>&1 || fail "DMG-Pruefung fehlgeschlagen"
+
+# fertiges DMG gegenpruefen: App, Programme-Verknuepfung, Laufwerks-Icon, Hintergrund
+CHECK_MNT="$(mktemp -d "$BUILD_DIR/dmg-check.XXXXXX")"
+hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$CHECK_MNT" "$DIST_DIR/$DMG_NAME" >/dev/null
+DMG_CHECK_OK=true
+for item in "$APP_NAME.app" "Applications" ".VolumeIcon.icns" ".background/background.tiff"; do
+    if [ ! -e "$CHECK_MNT/$item" ]; then
+        echo "  fehlt im fertigen DMG: $item"
+        DMG_CHECK_OK=false
+    fi
+done
+ls -la "$CHECK_MNT"
+hdiutil detach "$CHECK_MNT" -quiet || hdiutil detach "$CHECK_MNT" -force -quiet || true
+rmdir "$CHECK_MNT" 2>/dev/null || true
+[ "$DMG_CHECK_OK" = true ] || fail "Das fertige DMG ist unvollstaendig (siehe oben)"
 ok "DMG: $DIST_DIR/$DMG_NAME ($(du -h "$DIST_DIR/$DMG_NAME" | awk '{print $1}'))"
 
 # ----------------------------------------------------------
