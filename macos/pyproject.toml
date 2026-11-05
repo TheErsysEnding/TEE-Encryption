@@ -1,0 +1,47 @@
+# ==========================================================
+#   TEE Encryption V4.2.1 - macOS build configuration
+#   Used by `flet build macos` (see macos/build_macos.sh).
+#
+#   The build script copies this file into a staging project
+#   together with the app source (as src/main.py) and the
+#   generated app icon (src/assets/icon.png), then runs flet.
+# ==========================================================
+
+[project]
+name = "tee-encryption"
+version = "4.2.1"
+description = "AES-256-GCM encryption tool with a modern graphical interface"
+requires-python = ">=3.10"
+authors = [{ name = "TheErsysEnding" }]
+license = "MIT"
+dependencies = [
+  "flet==0.85.2",
+  # cryptography 49+ no longer ships Intel (x86_64) macOS wheels. 48.x still has a
+  # universal2 wheel, so the app runs natively on Apple Silicon AND Intel Macs.
+  "cryptography>=46,<49",
+  "qrcode>=8.0",
+  "pillow>=12.0",
+  # QR import: zxing-cpp ships its decoder inside the wheel (no Homebrew/zbar needed).
+  # pyzbar is intentionally not used here - it needs a system libzbar the app can't rely on.
+  "zxing-cpp>=2.3",
+]
+
+[tool.flet]
+org = "com.tee"
+bundle_id = "com.tee.encryption"
+product = "TEE Encryption"   # name in the Dock, menu bar, Finder and "About"
+artifact = "TEE Encryption"  # -> "TEE Encryption.app"
+company = "TheErsysEnding"
+copyright = "Copyright (c) 2026 TheErsysEnding"
+build_number = 421
+
+[tool.flet.app]
+path = "src"
+module = "main"
+
+[tool.flet.macos]
+# One universal app for Apple Silicon (arm64) and Intel (x86_64) Macs
+target_arch = ["arm64", "x86_64"]
+
+[tool.flet.macos.info]
+LSApplicationCategoryType = "public.app-category.utilities"

@@ -33,12 +33,42 @@ except ImportError:
     HAS_QRCODE = False
 
 # Optional: QR Code Reader (pyzbar + PIL)
+# pyzbar braucht die native ZBar-Bibliothek. Fehlt sie (z.B. in der macOS-App) oder
+# laesst sie sich nicht laden (falsche Architektur), wirft pyzbar ImportError ODER OSError.
 try:
     from pyzbar.pyzbar import decode as decode_qr
     from PIL import Image
     HAS_QR_READER = True
-except ImportError:
+except (ImportError, OSError):
     HAS_QR_READER = False
+
+# Fallback: zxing-cpp. Bringt den Decoder fertig kompiliert im Wheel mit, braucht also
+# keine System-Bibliothek - damit funktioniert der QR-Import auch in der macOS-App.
+if not HAS_QR_READER:
+    try:
+        import zxingcpp
+        from PIL import Image
+
+        class _QRResult:
+            """Gleiche Schnittstelle wie ein pyzbar-Ergebnis: .data enthaelt die Bytes."""
+            def __init__(self, data: bytes):
+                self.data = data
+
+        def decode_qr(img):
+            if hasattr(img, "convert"):
+                img = img.convert("L")  # Graustufen - wie pyzbar intern
+            results = []
+            for barcode in zxingcpp.read_barcodes(img):
+                if barcode.text:
+                    data = barcode.text.encode("utf-8")
+                else:
+                    data = bytes(getattr(barcode, "bytes", b"") or b"")
+                results.append(_QRResult(data))
+            return results
+
+        HAS_QR_READER = True
+    except (ImportError, OSError):
+        HAS_QR_READER = False
 
 # ---------------------------------------------------------
 # CONFIGURATION & CONSTANTS
@@ -61,7 +91,24 @@ def resource_path(rel):
     base = getattr(sys, '_MEIPASS', None) or os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, rel)
 
-CONFIG_FILE = os.path.join(get_app_path(), "config.json")
+def get_config_dir():
+    """Ordner fuer config.json.
+    Windows/Linux: wie bisher neben der EXE bzw. dem Skript.
+    macOS: ~/Library/Application Support/TEE Encryption - ein App-Bundle ist signiert und
+    oft schreibgeschuetzt (DMG, App Translocation, /Applications), Einstellungen gehoeren
+    deshalb in den Benutzer-Ordner. So bleiben sie auch bei App-Updates erhalten."""
+    if sys.platform == "darwin":
+        mac_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "TEE Encryption")
+        try:
+            os.makedirs(mac_dir, exist_ok=True)
+            return mac_dir
+        except OSError:
+            pass
+    return get_app_path()
+
+CONFIG_FILE = os.path.join(get_config_dir(), "config.json")
+# Bisheriger Speicherort - unter macOS wird eine vorhandene alte config.json beim Start uebernommen
+LEGACY_CONFIG_FILE = os.path.join(get_app_path(), "config.json")
 
 # ---------------------------------------------------------
 # THEME DEFINITIONS
@@ -860,9 +907,13 @@ def decrypt_file_to(in_path: str, out_path: str, password: bytes, default_iterat
 # ---------------------------------------------------------
 def load_settings():
     data = {"language": "en", "dark_mode": False, "opacity": 1.0, "pinned": False, "show_confirm": True}
-    if os.path.exists(CONFIG_FILE):
+    config_path = CONFIG_FILE
+    # Noch keine config.json am neuen Ort (macOS) -> alte Einstellungen uebernehmen
+    if not os.path.exists(config_path) and os.path.exists(LEGACY_CONFIG_FILE):
+        config_path = LEGACY_CONFIG_FILE
+    if os.path.exists(config_path):
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(config_path, "r") as f:
                 data.update(json.load(f))
         except:
             pass
@@ -1421,6 +1472,23 @@ def main(page: ft.Page):
         else:
             show_error(lang["no_input"])
     
+    def set_clipboard_fallback(value: str):
+        """Flet-eigene Zwischenablage als Rueckfallebene. Aeltere Flet-Versionen haben
+        page.set_clipboard(), ab Flet 0.70 gibt es dafuer den (asynchronen) Clipboard-Dienst."""
+        if hasattr(page, "set_clipboard"):
+            page.set_clipboard(value)
+        else:
+            page.run_task(ft.Clipboard().set, value)
+
+    def pbcopy_env():
+        """Umgebung fuer pbcopy (macOS). Aus dem Finder/Dock gestartete Apps haben kein LANG
+        gesetzt - pbcopy wuerde UTF-8 (Umlaute, Kyrillisch, Arabisch, CJK ...) dann falsch
+        interpretieren. Mit UTF-8-Locale kommt der Text unveraendert in die Zwischenablage."""
+        env = dict(os.environ)
+        env["LANG"] = "en_US.UTF-8"
+        env["LC_ALL"] = "en_US.UTF-8"
+        return env
+
     def on_copy(e):
         if txt_output.value:
             try:
@@ -1429,7 +1497,7 @@ def main(page: ft.Page):
                     proc = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
                     proc.communicate(txt_output.value.encode('utf-8'))
                 elif sys.platform == "darwin":
-                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE, env=pbcopy_env())
                     proc.communicate(txt_output.value.encode('utf-8'))
                 else:
                     # Linux: xclip falls back to flet built-in
@@ -1440,9 +1508,9 @@ def main(page: ft.Page):
                         )
                         proc.communicate(txt_output.value.encode('utf-8'))
                     except Exception:
-                        page.set_clipboard(txt_output.value)
+                        set_clipboard_fallback(txt_output.value)
             except Exception:
-                page.set_clipboard(txt_output.value)
+                set_clipboard_fallback(txt_output.value)
             show_snackbar(get_lang()["copied"])
     
     def on_swap(e):
@@ -1554,7 +1622,7 @@ def main(page: ft.Page):
                     proc = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
                     proc.communicate(hash_hex.encode('utf-8'))
                 elif sys.platform == "darwin":
-                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE, env=pbcopy_env())
                     proc.communicate(hash_hex.encode('utf-8'))
                 else:
                     try:
@@ -1564,9 +1632,9 @@ def main(page: ft.Page):
                         )
                         proc.communicate(hash_hex.encode('utf-8'))
                     except Exception:
-                        page.set_clipboard(hash_hex)
+                        set_clipboard_fallback(hash_hex)
             except Exception:
-                page.set_clipboard(hash_hex)
+                set_clipboard_fallback(hash_hex)
             show_snackbar(get_lang()["copied"])
         def close_dlg(e):
             dlg.open = False
