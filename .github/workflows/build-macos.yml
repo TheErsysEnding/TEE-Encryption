@@ -1,0 +1,187 @@
+# ==========================================================
+#   TEE Encryption - macOS build
+#   Builds the universal "TEE Encryption.app" (Apple Silicon + Intel),
+#   the DMG and the PKG installer on a real Mac, installs and launches
+#   them (Dock check, Intel/Rosetta run) and uploads the installers.
+#   Pull requests also refresh the unpublished draft release
+#   "macos-test-build"; pushing a tag like v4.2.1 attaches the
+#   installers to that release.
+# ==========================================================
+name: macOS Build (DMG + PKG)
+
+on:
+  # master and release tags build on push, pull requests build on every
+  # update - so the head commit of a PR always carries a real build result
+  push:
+    branches: ["master"]
+    tags: ["v*"]
+    paths:
+      - "TEE_Encryption_V*_GUI.py"
+      - "TEE_encryption_GOLD.png"
+      - "macos/**"
+      - ".github/workflows/build-macos.yml"
+  pull_request:
+    paths:
+      - "TEE_Encryption_V*_GUI.py"
+      - "TEE_encryption_GOLD.png"
+      - "macos/**"
+      - ".github/workflows/build-macos.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test (universal app, DMG, PKG)
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      FLET_CLI_NO_RICH_OUTPUT: "1"
+      COCOAPODS_DISABLE_STATS: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          echo "arch: $(uname -m)"
+          xcodebuild -version
+          echo "CocoaPods $(pod --version)"
+          python3 --version
+
+      - name: Cache Flutter SDK (installed by flet build)
+        uses: actions/cache@v4
+        with:
+          path: ~/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('macos/pyproject.toml') }}
+
+      - name: Cache Dart/Flutter packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('macos/pyproject.toml') }}
+
+      - name: Build app, DMG and PKG
+        run: ./macos/build_macos.sh
+
+      - name: Smoke test (install, launch, Dock, Intel via Rosetta)
+        run: ./macos/smoke_test.sh
+
+      - name: Upload installers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TEE_Encryption_macOS
+          path: |
+            dist/*.dmg
+            dist/*.pkg
+            dist/SHA256SUMS.txt
+          if-no-files-found: warn
+          compression-level: 0
+
+      - name: Upload smoke-test results (screenshots, logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test
+          path: dist/smoke-test/
+          if-no-files-found: ignore
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build/macos/flet-build.log
+          if-no-files-found: ignore
+
+  release:
+    name: Publish installers (release for v* tags, unpublished draft for PRs)
+    needs: build
+    # v* tag -> installers go into that (public) release.
+    # Pull request from this repository -> the draft release "macos-test-build"
+    # is replaced with the fresh installers. Drafts are NOT public - only people
+    # with write access see them (Releases page) and can publish them with one click.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          name: TEE_Encryption_macOS
+          path: dist
+
+      - name: Download smoke-test screenshots
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: smoke-test
+          path: smoke
+
+      - name: Publish release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.pkg
+            dist/SHA256SUMS.txt
+
+      - name: Update unpublished draft release "macos-test-build"
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TAG="macos-test-build"
+          IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo none)"
+          if [ "$IS_DRAFT" = "true" ]; then
+            gh release delete "$TAG" --yes
+          elif [ "$IS_DRAFT" = "false" ]; then
+            echo "::error::'$TAG' is a published release - not touching it."
+            exit 1
+          fi
+          {
+            echo "Unpublished test build of the macOS installers from pull request #$PR_NUMBER (commit ${HEAD_SHA:0:7})."
+            echo ""
+            echo "- TEE_Encryption_*_macOS.dmg - open it and drag TEE Encryption onto Applications"
+            echo "- TEE_Encryption_*_macOS.pkg - classic installer into Applications"
+            echo "- One universal app for Apple Silicon and Intel Macs, macOS 11+"
+            echo ""
+            echo "Built, installed and launch-tested on a real Mac: $RUN_URL"
+            echo "(screenshot-*.png: the app running natively and as Intel build under Rosetta 2)"
+            echo ""
+            echo "SHA-256:"
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+          } > notes.md
+          files=(dist/*.dmg dist/*.pkg dist/SHA256SUMS.txt)
+          for shot in smoke/screenshot-*.png; do
+            [ -f "$shot" ] && files+=("$shot")
+          done
+          gh release create "$TAG" "${files[@]}" \
+            --draft --target "$HEAD_SHA" \
+            --title "TEE Encryption V4.2.1 for macOS - test build (PR #$PR_NUMBER)" \
+            --notes-file notes.md
