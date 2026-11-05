@@ -8,8 +8,10 @@
 name: macOS Build (DMG + PKG)
 
 on:
+  # master and release tags build on push, pull requests build on every
+  # update - so the head commit of a PR always carries a real build result
   push:
-    branches: ["**"]
+    branches: ["master"]
     tags: ["v*"]
     paths:
       - "TEE_Encryption_V*_GUI.py"
@@ -34,9 +36,6 @@ concurrency:
 jobs:
   build:
     name: Build & test (universal app, DMG, PKG)
-    # Branches of this repository are already built by the push event -
-    # pull_request runs are only needed for contributions from forks.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
     timeout-minutes: 75
     env:
